@@ -1,5 +1,7 @@
 package com.jaylen.serialportlibrary.util
 
+import java.util.Locale
+
 object PortUtil {
     /**
      * String 转byte[]
@@ -41,7 +43,7 @@ object PortUtil {
             } else if (temp.length > 2) {
                 temp = temp.substring(0, 2)
             }
-            sb.append(temp.toUpperCase())
+            sb.append(temp.uppercase(Locale.ENGLISH))
         }
         return sb.toString()
     }

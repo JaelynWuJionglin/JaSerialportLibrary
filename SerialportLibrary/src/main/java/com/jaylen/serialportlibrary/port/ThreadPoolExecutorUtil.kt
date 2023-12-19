@@ -16,7 +16,7 @@ object ThreadPoolExecutorUtil {
     /**
      * 核心线程数量大小
      */
-    private val corePoolSize = Math.max(2, Math.min(CPU_COUNT - 1, 4))
+    private val corePoolSize = 2.coerceAtLeast((CPU_COUNT - 1).coerceAtMost(4))
     /**
      * 线程池最大容纳线程数
      */

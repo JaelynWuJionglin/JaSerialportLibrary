@@ -1,7 +1,7 @@
 package com.jaylen.serialportlibrary.port
 
-import android.util.Log
 import com.android.serialport.SerialPort
+import com.jaylen.serialportlibrary.util.LOGUtils
 import java.io.IOException
 import java.util.concurrent.ThreadPoolExecutor
 
@@ -78,7 +78,7 @@ class PortManager {
      */
     fun isAllPortOpen(): Boolean {
         if (threadList.isEmpty()) {
-            Log.e("PortManager", "Error! threadList.isEmpty()!")
+            LOGUtils.e("Error! threadList.isEmpty()!")
             return false
         }
 
@@ -170,7 +170,7 @@ class PortManager {
                 threadList.add(thread)
                 thread.openPort()
             } else {
-                Log.e("PortManager", "Error! startThread() threadPoolExecutor.isShutdown!")
+                LOGUtils.e("Error! startThread() threadPoolExecutor.isShutdown!")
             }
         }
     }

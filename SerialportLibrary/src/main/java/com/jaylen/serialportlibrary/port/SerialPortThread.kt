@@ -1,7 +1,7 @@
 package com.jaylen.serialportlibrary.port
 
-import android.util.Log
 import com.android.serialport.SerialPort
+import com.jaylen.serialportlibrary.util.LOGUtils
 
 import java.io.IOException
 import java.io.InputStream
@@ -15,20 +15,19 @@ class SerialPortThread(
     val portBean: PortBean,
     private val callback: SerialPortCallback?
 ) : Thread() {
-    private val tag = "SerialPortThread"
     private var isRun = true
     private var inputStream: InputStream? = null
     var outputStream: OutputStream? = null
     var isPortOpen = false
 
     fun openPort() {
-        Log.d(tag, "openPort()  $portBean")
+        LOGUtils.d("openPort()  $portBean")
         if (portBean.deviceAdr != "" && portBean.baudRate > 0) {
             try {
                 if (serialPort.openPort(portBean.deviceAdr, portBean.baudRate, portBean.flags)) {
                     inputStream = serialPort.inputStream
                     outputStream = serialPort.outputStream
-                    Log.i(tag, "成功打开串口: ${portBean.deviceAdr}")
+                    LOGUtils.i("成功打开串口: ${portBean.deviceAdr}")
                     isPortOpen = true
                     callback?.onPortOpenSuccess()
                 } else {
@@ -60,7 +59,7 @@ class SerialPortThread(
 
         serialPort.close()
         isPortOpen = false
-        Log.e(tag, "${portBean.deviceAdr} --- serialPort.close()")
+        LOGUtils.e("${portBean.deviceAdr} --- serialPort.close()")
     }
 
     /**
@@ -81,7 +80,7 @@ class SerialPortThread(
                     e.printStackTrace()
                 }
             }
-            Log.e(tag, "run: 串口关闭！")
+            LOGUtils.e("run: 串口关闭！")
         } catch (e: IOException) {
             e.printStackTrace()
         }

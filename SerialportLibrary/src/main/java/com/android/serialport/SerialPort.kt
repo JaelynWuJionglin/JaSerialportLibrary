@@ -1,6 +1,6 @@
 package com.android.serialport
 
-import android.util.Log
+import com.jaylen.serialportlibrary.util.LOGUtils
 import java.io.File
 import java.io.FileDescriptor
 import java.io.FileInputStream
@@ -9,7 +9,6 @@ import java.io.InputStream
 import java.io.OutputStream
 
 class SerialPort {
-    private val TAG = "SerialPort"
     private var mFd: FileDescriptor? = null
     private var mFileInputStream: FileInputStream? = null
     private var mFileOutputStream: FileOutputStream? = null
@@ -63,7 +62,7 @@ class SerialPort {
 
                 su.outputStream.write(cmd.toByteArray())
                 if (su.waitFor() != 0 || !device.canRead() || !device.canWrite()) {
-                    Log.e(TAG, "su.waitFor() != 0 || !device.canRead() || !device.canWrite()")
+                    LOGUtils.e("su.waitFor() != 0 || !device.canRead() || !device.canWrite()")
                     return false
                 }
             } catch (e: Exception) {
@@ -75,7 +74,7 @@ class SerialPort {
         this.mFd = open(devPath, baudRate, 8, 0, 1, flags)
 
         return if (this.mFd == null) {
-            Log.e(TAG, "native open returns null")
+            LOGUtils.e("native open returns null")
             false
         } else {
             this.mFileInputStream = FileInputStream(this.mFd)
