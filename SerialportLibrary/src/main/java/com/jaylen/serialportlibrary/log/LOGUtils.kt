@@ -1,11 +1,11 @@
-package com.jaylen.serialportlibrary.util
+package com.jaylen.serialportlibrary.log
 
+import android.annotation.SuppressLint
 import android.app.Application
 import android.bluetooth.BluetoothGatt
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
-import android.os.Environment
 import android.os.Process
 import android.text.TextUtils
 import android.util.Log
@@ -25,9 +25,9 @@ import java.util.concurrent.Executors
 import kotlin.system.exitProcess
 
 object LOGUtils {
-    private const val TAG = "LK_XD"
+    private const val TAG = "LK_PORT"
     private const val LINE_MAX = 3 * 1024
-    private const val MAX_LOG_FILE_SIZE = 10 //最大日志保存数量，最小为1
+    private const val MAX_LOG_FILE_SIZE = 5 //最大日志保存数量，最小为1
     private var logPath: String = "" //日志文件保存路径
     private var mDefaultHandler: Thread.UncaughtExceptionHandler? = null
     private val erInfoMap: MutableMap<String, String> = HashMap() //用来存储设备信息和异常信息
@@ -44,9 +44,9 @@ object LOGUtils {
      */
     @JvmStatic
     fun init(app: Application, isLog: Boolean, isSave: Boolean) {
-        this.mApplication = app
-        this.isLog = isLog
-        this.isSave = isSave
+        mApplication = app
+        LOGUtils.isLog = isLog
+        LOGUtils.isSave = isSave
         if (isSave) {
             initExecutors()
             logFileInit(app)
@@ -57,6 +57,38 @@ object LOGUtils {
             //设置该CrashHandler为程序的默认处理器
             Thread.setDefaultUncaughtExceptionHandler(mUncaughtExceptionHandler)
         }
+    }
+
+    //分享App日志
+    @SuppressLint("SimpleDateFormat")
+    fun shareAppLogFile(listener: (File) -> Unit) {
+        if (TextUtils.isEmpty(logPath) || mApplication == null) {
+            return
+        }
+        Thread {
+            val shareDir = "${FileJaUtils.getParentFilePath(mApplication!!)}${File.separator}LOGZip"
+            val shareFile = File(shareDir)
+            if (!shareFile.exists()){
+                shareFile.mkdirs()
+            }
+
+            val shareName =
+                "AppLog_${SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(Date(System.currentTimeMillis()))}.zip"
+            val sharePath = "$shareDir${File.separator}$shareName"
+            //压缩文件夹为zip
+            FileJaUtils.zip(logPath, sharePath)
+
+            //删除之前的文件
+            val files = shareFile.listFiles()
+            if (files != null && files.isNotEmpty()) {
+                for (file in files) {
+                    if (file.name.endsWith(".zip") && !file.name.equals(shareName)) {
+                        file?.delete()
+                    }
+                }
+            }
+            listener(File(sharePath))
+        }.start()
     }
 
     /**
@@ -231,18 +263,10 @@ object LOGUtils {
         sExecutorService = Executors.newFixedThreadPool(1)
     }
 
+
     //日志保存初始化
     private fun logFileInit(context: Context) {
-        val parentDir = if (Environment.MEDIA_MOUNTED == Environment.getExternalStorageState() || !Environment.isExternalStorageRemovable()) {
-
-            //如果外部储存可用
-            //获得外部存储路径,默认路径为 /sdcard/Android/data/appPackage/files/AppLog/xxxxx
-            context.getExternalFilesDir(null)!!.path
-        } else {
-
-            //直接存在/data/data里，非root手机是看不到的
-            context.filesDir.path
-        }
+        val parentDir = FileJaUtils.getParentFilePath(context)
         logPath = "$parentDir/AppLog/"
 
         val file = File(logPath)
@@ -394,7 +418,9 @@ object LOGUtils {
                 ) && mDefaultHandler != null
             ) {
                 //如果用户没有处理则让系统默认的异常处理器来处理
-                mDefaultHandler!!.uncaughtException(thread, ex)
+                if (ex != null) {
+                    mDefaultHandler!!.uncaughtException(thread, ex)
+                }
             } else {
                 try {
                     Thread.sleep(3000)
@@ -422,10 +448,20 @@ object LOGUtils {
     private fun collectDeviceInfo(ctx: Context?) {
         try {
             val pm = ctx!!.packageManager
-            val pi = pm.getPackageInfo(ctx.packageName, PackageManager.GET_ACTIVITIES)
+            val pi = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                pm.getPackageInfo(ctx.packageName, PackageManager.PackageInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION")
+                pm.getPackageInfo(ctx.packageName, PackageManager.GET_ACTIVITIES)
+            }
             if (pi != null) {
                 val versionName = if (pi.versionName == null) "null" else pi.versionName
-                val versionCode = pi.versionCode.toString() + ""
+                val versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                    pi.longVersionCode.toString()
+                } else {
+                    @Suppress("DEPRECATION")
+                    pi.versionCode.toString()
+                }
                 erInfoMap["versionName"] = versionName
                 erInfoMap["versionCode"] = versionCode
             }

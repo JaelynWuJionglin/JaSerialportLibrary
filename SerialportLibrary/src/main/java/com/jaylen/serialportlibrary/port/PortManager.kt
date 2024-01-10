@@ -1,7 +1,7 @@
 package com.jaylen.serialportlibrary.port
 
 import com.android.serialport.SerialPort
-import com.jaylen.serialportlibrary.util.LOGUtils
+import com.jaylen.serialportlibrary.log.LOGUtils
 import java.io.IOException
 import java.util.concurrent.ThreadPoolExecutor
 
@@ -66,7 +66,6 @@ class PortManager {
             threadList.clear()
         }
         portBeanList.clear()
-        callback?.onPortClose()
         // 此处不一定能shutdown线程池
         // 需要在MainActivity的onDestroy()中使用exitProcess(0),完全退出app
 //        threadPoolExecutor.shutdownNow()

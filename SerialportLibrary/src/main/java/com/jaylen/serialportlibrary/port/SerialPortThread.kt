@@ -1,7 +1,7 @@
 package com.jaylen.serialportlibrary.port
 
 import com.android.serialport.SerialPort
-import com.jaylen.serialportlibrary.util.LOGUtils
+import com.jaylen.serialportlibrary.log.LOGUtils
 
 import java.io.IOException
 import java.io.InputStream
@@ -29,19 +29,19 @@ class SerialPortThread(
                     outputStream = serialPort.outputStream
                     LOGUtils.i("成功打开串口: ${portBean.deviceAdr}")
                     isPortOpen = true
-                    callback?.onPortOpenSuccess()
+                    callback?.onPortOpenSuccess(portBean.deviceAdr)
                 } else {
                     isPortOpen = false
-                    callback?.onPortOpenFail()
+                    callback?.onPortOpenFail(portBean.deviceAdr)
                 }
             } catch (t: Throwable) {
                 t.printStackTrace()
                 isPortOpen = false
-                callback?.onPortOpenFail()
+                callback?.onPortOpenFail(portBean.deviceAdr)
             }
         } else {
             isPortOpen = false
-            callback?.onPortOpenFail()
+            callback?.onPortOpenFail(portBean.deviceAdr)
         }
     }
 
@@ -60,6 +60,7 @@ class SerialPortThread(
         serialPort.close()
         isPortOpen = false
         LOGUtils.e("${portBean.deviceAdr} --- serialPort.close()")
+        callback?.onPortClose(portBean.deviceAdr)
     }
 
     /**

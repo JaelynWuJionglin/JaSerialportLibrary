@@ -1,6 +1,6 @@
 package com.android.serialport
 
-import com.jaylen.serialportlibrary.util.LOGUtils
+import com.jaylen.serialportlibrary.log.LOGUtils
 import java.io.File
 import java.io.FileDescriptor
 import java.io.FileInputStream

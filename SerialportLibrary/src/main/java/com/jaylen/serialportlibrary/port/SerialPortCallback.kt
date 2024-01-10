@@ -11,9 +11,9 @@ interface SerialPortCallback {
      */
     fun onPortMessage(address: String, message: ByteArray)
 
-    fun onPortOpenSuccess()
+    fun onPortOpenSuccess(address: String)
 
-    fun onPortOpenFail()
+    fun onPortOpenFail(address: String)
 
-    fun onPortClose()
+    fun onPortClose(address: String)
 }
