@@ -28,15 +28,15 @@ class MainActivity : AppCompatActivity(), SerialPortCallback {
 
     }
 
-    override fun onPortOpenSuccess() {
+    override fun onPortOpenSuccess(address: String) {
 
     }
 
-    override fun onPortOpenFail() {
+    override fun onPortOpenFail(address: String) {
 
     }
 
-    override fun onPortClose() {
+    override fun onPortClose(address: String) {
 
     }
 

@@ -27,7 +27,7 @@ import kotlin.system.exitProcess
 object LOGUtils {
     private const val TAG = "LK_PORT"
     private const val LINE_MAX = 3 * 1024
-    private const val MAX_LOG_FILE_SIZE = 5 //最大日志保存数量，最小为1
+    private const val MAX_LOG_FILE_SIZE = 2 //最大日志保存数量，最小为1
     private var logPath: String = "" //日志文件保存路径
     private var mDefaultHandler: Thread.UncaughtExceptionHandler? = null
     private val erInfoMap: MutableMap<String, String> = HashMap() //用来存储设备信息和异常信息
