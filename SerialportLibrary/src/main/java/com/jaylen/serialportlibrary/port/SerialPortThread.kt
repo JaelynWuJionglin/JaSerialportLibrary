@@ -68,26 +68,36 @@ class SerialPortThread(
      */
     private fun readData() {
         try {
-            while (isRun) {
-                try {
-                    val bytes = ByteArray(1024)
-                    val readLen = inputStream?.read(bytes) ?: 0
-                    if (readLen > 0) {
-                        val data = ByteArray(readLen)
-                        System.arraycopy(bytes, 0, data, 0, readLen)
-                        callback?.onPortMessage(portBean.deviceAdr, data)
-                    }
-                } catch (e: IOException) {
-                    e.printStackTrace()
-                }
+            var count = 0
+            while (count == 0) {
+                count = inputStream?.available() ?: 0
             }
-            LOGUtils.e("run: 串口关闭！")
+
+            LOGUtils.v("readData: count:$count")
+
+            if (count > 0) {
+                val bytes = ByteArray(count)
+                var readCount = 0
+                while (readCount < count) {
+                    readCount += inputStream?.read(bytes, readCount, count - readCount) ?: 0
+                }
+                callback?.onPortMessage(portBean.deviceAdr, bytes)
+            }
         } catch (e: IOException) {
             e.printStackTrace()
+            LOGUtils.w(e.toString())
+            return
         }
     }
 
     override fun run() {
-        readData()
+        super.run()
+        while (!isInterrupted && isRun) {
+            while (isRun) {
+                readData()
+            }
+            LOGUtils.w("run: 串口read线程异常！")
+        }
+        LOGUtils.e("--------  run: 串口read线程中断！ --------")
     }
 }
