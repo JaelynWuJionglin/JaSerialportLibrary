@@ -100,7 +100,6 @@ class PortManager {
         for (thread in threadList) {
             if (thread.portBean.deviceAdr == dev) {
                 return thread.isPortOpen
-
             }
         }
         return false
@@ -134,7 +133,6 @@ class PortManager {
         for (thread in threadList) {
             if (thread.portBean.deviceAdr == dev) {
                 return sendData(thread, bytes)
-
             }
         }
         return false
@@ -144,18 +142,23 @@ class PortManager {
      * 发送数据
      */
     private fun sendData(thread: SerialPortThread, bytes: ByteArray): Boolean {
-        var boolean = false
-        sendPoolExecutor.execute {
+        return if (thread.outputStream != null && !sendPoolExecutor.isShutdown) {
             try {
-                thread.outputStream?.write(bytes)
-                thread.outputStream?.flush()
-                boolean = true
-            } catch (e: IOException) {
+                sendPoolExecutor.execute {
+                    try {
+                        thread.outputStream?.write(bytes)
+                        thread.outputStream?.flush()
+                    } catch (e: IOException) {
+                        e.printStackTrace()
+                    }
+                }
+            } catch (e: Exception) {
                 e.printStackTrace()
-
             }
+            true
+        } else {
+            false
         }
-        return boolean
     }
 
     /**
@@ -163,14 +166,31 @@ class PortManager {
      */
     private fun startThreadAndOpenPort() {
         for (portBean in portBeanList) {
-            if (!threadPoolExecutor.isShutdown) {
-                val thread = SerialPortThread(serialPort, portBean, callback)
-                threadPoolExecutor.execute(thread)
+            var thread = getPortThread(portBean)
+            if (thread == null) {
+                thread = SerialPortThread(serialPort, portBean, callback)
                 threadList.add(thread)
+            }
+
+            //LOGUtils.d("startThreadAndOpenPort deviceAdr:${thread.portBean.deviceAdr}  isPortOpen:${thread.isPortOpen}  isShutdown:${threadPoolExecutor.isShutdown}")
+
+            if (!thread.isPortOpen && !threadPoolExecutor.isShutdown) {
+                threadPoolExecutor.remove(thread)
+                threadPoolExecutor.execute(thread)
                 thread.openPort()
-            } else {
-                LOGUtils.e("Error! startThread() threadPoolExecutor.isShutdown!")
             }
         }
+    }
+
+    /**
+     * 获取已经创建得SerialPortThread
+     */
+    private fun getPortThread(portBean: PortBean): SerialPortThread? {
+        for (thread in threadList) {
+            if (thread.portBean.deviceAdr == portBean.deviceAdr) {
+                return thread
+            }
+        }
+        return null
     }
 }

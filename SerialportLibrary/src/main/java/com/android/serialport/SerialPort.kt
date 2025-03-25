@@ -56,30 +56,31 @@ class SerialPort {
     fun openPort(devPath: String, baudRate: Int, flags: Int): Boolean {
         val device = File(devPath)
         if (!device.canRead() || !device.canWrite()) {
-            try {/* Missing read/write permission, trying to chmod the file */
-                val su: Process = Runtime.getRuntime().exec("/system/bin/su")
-                val cmd = "chmod 666 $devPath \n exit \n"
-
-                su.outputStream.write(cmd.toByteArray())
-                if (su.waitFor() != 0 || !device.canRead() || !device.canWrite()) {
-                    LOGUtils.e("su.waitFor() != 0 || !device.canRead() || !device.canWrite()")
-                    return false
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-                return false
-            }
+//            try {/* Missing read/write permission, trying to chmod the file */
+//                val su: Process = Runtime.getRuntime().exec("/system/bin/su")
+//                val cmd = "chmod 666 $devPath \n exit \n"
+//
+//                su.outputStream.write(cmd.toByteArray())
+//                if (su.waitFor() != 0 || !device.canRead() || !device.canWrite()) {
+//                    LOGUtils.e("su.waitFor() != 0 || !device.canRead() || !device.canWrite()")
+//                    return false
+//                }
+//            } catch (e: Exception) {
+//                e.printStackTrace()
+//                return false
+//            }
+            LOGUtils.e("openPort $devPath error! => No device read/write permission")
+            return false
         }
 
         this.mFd = open(devPath, baudRate, 8, 0, 1, flags)
 
         return if (this.mFd == null) {
-            LOGUtils.e("native open returns null")
+            LOGUtils.e("openPort $devPath error! native open returns null")
             false
         } else {
             this.mFileInputStream = FileInputStream(this.mFd)
             this.mFileOutputStream = FileOutputStream(this.mFd)
-
             true
         }
     }

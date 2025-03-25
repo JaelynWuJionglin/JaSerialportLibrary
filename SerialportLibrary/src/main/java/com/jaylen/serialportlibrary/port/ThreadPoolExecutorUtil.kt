@@ -68,7 +68,7 @@ object ThreadPoolExecutorUtil {
 
         return ThreadPoolExecutor(
             size,
-            size,
+            maximumPoolSize,
             keepAliveTime,
             TimeUnit.SECONDS,
             sPoolWorkQueue,

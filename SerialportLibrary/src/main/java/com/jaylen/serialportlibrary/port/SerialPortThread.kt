@@ -15,7 +15,6 @@ class SerialPortThread(
     val portBean: PortBean,
     private val callback: SerialPortCallback?
 ) : Thread() {
-    private var isRun = true
     private var inputStream: InputStream? = null
     var outputStream: OutputStream? = null
     var isPortOpen = false
@@ -46,19 +45,23 @@ class SerialPortThread(
     }
 
     fun closePort() {
-        isRun = false
+        isPortOpen = false
         try {
             inputStream?.close()
             outputStream?.close()
         } catch (e: IOException) {
-            e.printStackTrace()
+            LOGUtils.w(e.printStackTrace().toString())
         } finally {
             inputStream = null
             outputStream = null
         }
 
-        serialPort.close()
-        isPortOpen = false
+        try {
+            serialPort.close()
+        } catch (e: Exception) {
+            LOGUtils.w(e.printStackTrace().toString())
+        }
+
         LOGUtils.e("${portBean.deviceAdr} --- serialPort.close()")
         callback?.onPortClose(portBean.deviceAdr)
     }
@@ -73,7 +76,7 @@ class SerialPortThread(
                 count = inputStream?.available() ?: 0
             }
 
-            LOGUtils.v("readData: count:$count")
+            //LOGUtils.v("readData: count:$count")
 
             if (count > 0) {
                 val bytes = ByteArray(count)
@@ -83,21 +86,23 @@ class SerialPortThread(
                 }
                 callback?.onPortMessage(portBean.deviceAdr, bytes)
             }
+        } catch (ae: ArrayIndexOutOfBoundsException) {
+            LOGUtils.w(ae.printStackTrace().toString())
         } catch (e: IOException) {
-            e.printStackTrace()
-            LOGUtils.w(e.toString())
+            //e.printStackTrace()
+            LOGUtils.w(e.printStackTrace().toString())
+            closePort()
             return
         }
     }
 
     override fun run() {
         super.run()
-        while (!isInterrupted && isRun) {
-            while (isRun) {
+        while (!isInterrupted) {
+            while (isPortOpen) {
                 readData()
             }
-            LOGUtils.w("run: 串口read线程异常！")
         }
-        LOGUtils.e("--------  run: 串口read线程中断！ --------")
+        LOGUtils.w("run: 串口read线程异常！")
     }
 }
