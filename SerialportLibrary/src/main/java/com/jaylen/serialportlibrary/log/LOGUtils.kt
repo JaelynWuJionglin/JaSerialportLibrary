@@ -9,6 +9,7 @@ import android.os.Build
 import android.os.Process
 import android.text.TextUtils
 import android.util.Log
+import com.jaylen.serialportlibrary.port.ThreadPoolExecutorUtil
 import java.io.BufferedWriter
 import java.io.File
 import java.io.FileOutputStream
@@ -21,13 +22,13 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.concurrent.ExecutorService
-import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
 import kotlin.system.exitProcess
 
 object LOGUtils {
     private const val TAG = "LK_PORT"
     private const val LINE_MAX = 3 * 1024
-    private const val MAX_LOG_FILE_SIZE = 2 //最大日志保存数量，最小为1
+    private const val MAX_LOG_FILE_SIZE = 5 //最大日志保存数量，最小为1
     private var logPath: String = "" //日志文件保存路径
     private var mDefaultHandler: Thread.UncaughtExceptionHandler? = null
     private val erInfoMap: MutableMap<String, String> = HashMap() //用来存储设备信息和异常信息
@@ -59,36 +60,60 @@ object LOGUtils {
         }
     }
 
+    fun isSaveLog(): Boolean {
+        return isSave
+    }
+
     //分享App日志
-    @SuppressLint("SimpleDateFormat")
-    fun shareAppLogFile(listener: (File) -> Unit) {
-        if (TextUtils.isEmpty(logPath) || mApplication == null) {
-            return
-        }
+    fun shareAppLogFile(listener: (File?) -> Unit) {
         Thread {
-            val shareDir = "${FileJaUtils.getParentFilePath(mApplication!!)}${File.separator}LOGZip"
-            val shareFile = File(shareDir)
-            if (!shareFile.exists()) {
-                shareFile.mkdirs()
+            if (TextUtils.isEmpty(logPath) || mApplication == null) {
+                listener(null)
+                return@Thread
             }
 
-            val shareName =
-                "AppLog_${SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(Date(System.currentTimeMillis()))}.zip"
-            val sharePath = "$shareDir${File.separator}$shareName"
-            //压缩文件夹为zip
-            FileJaUtils.zip(logPath, sharePath)
-
-            //删除之前的文件
-            val files = shareFile.listFiles()
-            if (files != null && files.isNotEmpty()) {
-                for (file in files) {
-                    if (file.name.endsWith(".zip") && !file.name.equals(shareName)) {
-                        file?.delete()
-                    }
-                }
+            val sharePath = zipLogFile()
+            if (sharePath == "") {
+                listener(null)
+                return@Thread
             }
+
             listener(File(sharePath))
         }.start()
+    }
+
+    /**
+     * 日志文件压缩成zip
+     */
+    @SuppressLint("SimpleDateFormat")
+    fun zipLogFile(): String {
+        val path = FileJaUtils.getParentFilePath(mApplication!!)
+        if (path.isEmpty()) {
+            return ""
+        }
+
+        val shareDir = "$path${File.separator}LOGZip"
+        val shareFile = File(shareDir)
+        if (!shareFile.exists()) {
+            shareFile.mkdirs()
+        }
+
+        val shareName =
+            "AppLog_${SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(Date(System.currentTimeMillis()))}.zip"
+        val sharePath = "$shareDir${File.separator}$shareName"
+        //压缩文件夹为zip
+        FileJaUtils.zip(logPath, sharePath)
+
+        //删除之前的文件
+        val files = shareFile.listFiles()
+        if (files != null && files.isNotEmpty()) {
+            for (file in files) {
+                if (file.name.endsWith(".zip") && !file.name.equals(shareName)) {
+                    file?.delete()
+                }
+            }
+        }
+        return sharePath
     }
 
     /**
@@ -258,15 +283,18 @@ object LOGUtils {
         return stringBuilder.toString()
     }
 
-    //创建一个大小固定为1的线程池
+    //创建线程池
     private fun initExecutors() {
-        sExecutorService = Executors.newFixedThreadPool(1)
+        sExecutorService = ThreadPoolExecutorUtil.cachedThreadPool()
     }
 
 
     //日志保存初始化
     private fun logFileInit(context: Context) {
         val parentDir = FileJaUtils.getParentFilePath(context)
+        if (parentDir.isEmpty()) {
+            return
+        }
         logPath = "$parentDir/AppLog/"
 
         val file = File(logPath)
@@ -285,41 +313,45 @@ object LOGUtils {
             return
         }
         if (sExecutorService!!.isShutdown) {
-            initExecutors()
+            return
         }
-        sExecutorService!!.submit {
-            val date = Date()
-            val dateFormat =
-                SimpleDateFormat("", Locale.SIMPLIFIED_CHINESE)
-            dateFormat.applyPattern("yyyy-MM-dd")
-            val path =
-                logPath + dateFormat.format(date) + ".log"
-            dateFormat.applyPattern("[yyyy-MM-dd HH:mm:ss.SSS]")
-            val time = dateFormat.format(date)
-            val file = File(path)
-            if (!file.exists()) {
-                createDipPath(path)
-            }
-            var out: BufferedWriter? = null
-            try {
-                out = BufferedWriter(
-                    OutputStreamWriter(
-                        FileOutputStream(
-                            file,
-                            true
+        try {
+            sExecutorService!!.submit {
+                val date = Date()
+                val dateFormat =
+                    SimpleDateFormat("", Locale.SIMPLIFIED_CHINESE)
+                dateFormat.applyPattern("yyyy-MM-dd")
+                val path =
+                    logPath + dateFormat.format(date) + ".log"
+                dateFormat.applyPattern("[yyyy-MM-dd HH:mm:ss.SSS]")
+                val time = dateFormat.format(date)
+                val file = File(path)
+                if (!file.exists()) {
+                    createDipPath(path)
+                }
+                var out: BufferedWriter? = null
+                try {
+                    out = BufferedWriter(
+                        OutputStreamWriter(
+                            FileOutputStream(
+                                file,
+                                true
+                            )
                         )
                     )
-                )
-                out.write("$time $tag $msg\r\n")
-            } catch (e: Exception) {
-                logCat("w", e.toString())
-            } finally {
-                try {
-                    out?.close()
-                } catch (e: IOException) {
+                    out.write("$time $tag $msg\r\n")
+                } catch (e: Exception) {
                     logCat("w", e.toString())
+                } finally {
+                    try {
+                        out?.close()
+                    } catch (e: IOException) {
+                        logCat("w", e.toString())
+                    }
                 }
             }
+        } catch (r: RejectedExecutionException) {
+            r.printStackTrace()
         }
     }
 
