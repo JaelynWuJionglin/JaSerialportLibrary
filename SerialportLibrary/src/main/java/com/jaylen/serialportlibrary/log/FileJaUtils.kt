@@ -26,11 +26,18 @@ object FileJaUtils {
 
             //如果外部储存可用
             //获得外部存储路径,默认路径为 /sdcard/Android/data/appPackage/files/AppLog/xxxxx
-            context.getExternalFilesDir(null)!!.path
+            var path = context.getExternalFilesDir("")?.path ?: ""
+
+            //外部储存路径无法获取，则返回内部存储
+            if (path.isEmpty()) {
+                path = context.filesDir.path ?: ""
+            }
+
+            path
         } else {
 
             //直接存在/data/data里，非root手机是看不到的
-            context.filesDir.path
+            context.filesDir.path ?: ""
         }
     }
 
